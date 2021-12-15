@@ -3,7 +3,7 @@ About
 
 PyRAMSES is a Python module that facilitates the use of the dynamic simulator RAMSES. The module provides basic functionality like defining test-cases, running a simulation, extracting information, etc. As well as more advanced integration of the simulator into the remaining Python code.
 
-Please check the documentation under `https://pyramses.paristidou.info <https://pyramses.paristidou.info>`_.
+Please check the documentation under `https://pyramses.sps-lab.org <https://pyramses.sps-lab.org>`_.
 
 Check the LICENSE file before using this software.
 

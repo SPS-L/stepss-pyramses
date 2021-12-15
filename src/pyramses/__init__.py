@@ -9,7 +9,7 @@ __copyright__ = "Petros Aristidou"
 __license__ = "Petros Aristidou"
 __maintainer__ = "Petros Aristidou"
 __email__ = "apetros@pm.me"
-__url__ = "https://sps.cut.ac.cy/pyramses"
+__url__ = "https://pyramses.sps-lab.org"
 __status__ = "3 - Alpha"
 
 import sys

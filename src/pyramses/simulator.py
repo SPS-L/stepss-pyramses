@@ -21,8 +21,7 @@ class sim(object):
     warnings.showwarning = CustomWarning
 
     ramsesCount = 0  # Provides a sum of all instances of Ramses running
-    os.environ[
-        "KMP_DUPLICATE_LIB_OK"] = "TRUE"  # This allows to run even if 2 versions of MKL are present on the computer
+    os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"  # This allows to run even if 2 versions of MKL are present on the computer
 
     # print(__libdir__)
     # print(os.path.join(__libdir__,"ramses.dll"))

@@ -160,7 +160,7 @@ class extractor(object):
         self._addctl.append(idxdctl)
         
         self._totobs = 2*self._busnum + self._shunum + 2*self._ldnum + 6*self._branum + \
-                       13*self._syncnum + sum(self._excobsnum) + sum(self._torobsnum) + \
+                       15*self._syncnum + sum(self._excobsnum) + sum(self._torobsnum) + \
                        sum(self._injobsnum) + sum(self._twopobsnum) + sum(self._dctlobsnum)
         
         self._results = []
@@ -381,7 +381,7 @@ class extractor(object):
             i=self._syncname.index(syncname) + 1 # +1 is to go to Fortran notation
             return self._getSyncClass(self._time, self._results, 
                                   2*self._busnum+self._shunum+2*self._ldnum+6*self._branum+
-                                  13*(i-1)+self._adexc[i-1]-1+self._adtor[i-1]-1, syncname)
+                                  15*(i-1)+self._adexc[i-1]-1+self._adtor[i-1]-1, syncname)
         except ValueError:
             warnings.warn('Sync machine %s not found' % (syncname))
         
@@ -432,7 +432,7 @@ class extractor(object):
             i=self._syncname.index(syncname) + 1 # +1 is to go to Fortran notation
             return self._getExcClass(self._time, self._results, 
                                   2*self._busnum+self._shunum+2*self._ldnum+6*self._branum+
-                                  13*(i-1)+self._adexc[i-1]-1+self._adtor[i-1]-1 + 13, self._excobsname[i-1], syncname)
+                                  15*(i-1)+self._adexc[i-1]-1+self._adtor[i-1]-1 + 15, self._excobsname[i-1], syncname)
         except ValueError:
             warnings.warn('Sync machine %s not found' % (syncname))
         
@@ -469,7 +469,7 @@ class extractor(object):
             i=self._syncname.index(syncname) + 1 # +1 is to go to Fortran notation
             return self._getTorClass(self._time, self._results, 
                                   2*self._busnum+self._shunum+2*self._ldnum+6*self._branum+
-                                  13*(i-1)+self._adexc[i]-1+self._adtor[i-1]-1 + 13, self._torobsname[i-1], syncname)
+                                  15*(i-1)+self._adexc[i]-1+self._adtor[i-1]-1 + 15, self._torobsname[i-1], syncname)
         except ValueError:
             warnings.warn('Sync machine %s not found' % (syncname))
         
@@ -507,7 +507,7 @@ class extractor(object):
             i=self._injname.index(injname) + 1 # +1 is to go to Fortran notation
             return self._getInjClass(self._time, self._results, 
                                  2*self._busnum+self._shunum+2*self._ldnum+6*self._branum+
-                                 13*(self._syncnum)+self._adexc[self._syncnum]-1+
+                                 15*(self._syncnum)+self._adexc[self._syncnum]-1+
                                  self._adtor[self._syncnum]-1+self._adinj[i-1]-1, 
                                  self._injobsname[i-1], injname)
         except ValueError:
@@ -547,7 +547,7 @@ class extractor(object):
             i=self._twopname.index(twopname) + 1 # +1 is to go to Fortran notation
             return self._getTwopClass(self._time, self._results, 
                                  2*self._busnum+self._shunum+2*self._ldnum+6*self._branum+
-                                 13*(self._syncnum)+self._adexc[self._syncnum]-1+
+                                 15*(self._syncnum)+self._adexc[self._syncnum]-1+
                                  self._adtor[self._syncnum]-1+self._adinj[self._injnum]-1+
                                  self._adtwop[i-1]-1, 
                                  self._twopobsname[i-1], twopname)
@@ -588,7 +588,7 @@ class extractor(object):
             i=self._dctlname.index(dctlname) + 1 # +1 is to go to Fortran notation
             return self._getDCTLClass(self._time, self._results, 
                                  2*self._busnum+self._shunum+2*self._ldnum+6*self._branum+
-                                 13*(self._syncnum)+self._adexc[self._syncnum]-1+
+                                 15*(self._syncnum)+self._adexc[self._syncnum]-1+
                                  self._adtor[self._syncnum]-1+self._adinj[self._injnum]-1+
                                  self._adtwop[self._twopnum]-1+self._addctl[i-1]-1, 
                                  self._dctlobsname[i-1],dctlname)

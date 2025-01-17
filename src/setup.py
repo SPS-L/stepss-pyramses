@@ -11,7 +11,7 @@ import os
 def read_file(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
-install_requires = ['matplotlib','scipy','numpy','mkl']
+install_requires = ['matplotlib','scipy','numpy','mkl==2024.2.2']
 
 from pyramses import __version__, __author__, __email__, __status__, __url__, __name__
 
@@ -37,5 +37,11 @@ setup(
         "Environment :: Console",
         "License :: Other/Proprietary License",
         "Programming Language :: Python :: 3"
-    ]
+    ],
+    entry_points={
+        'console_scripts' : [
+            'dynsim = pyramses.scripts.exec:run',
+        ]
+    }
+
 )

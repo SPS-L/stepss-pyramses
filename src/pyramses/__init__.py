@@ -3,7 +3,7 @@
 """Python library for RAMSES dynamic simulator."""
 
 __name__ = "pyramses"
-__version__ = '0.0.22'
+__version__ = '0.0.41'
 __author__ = "Petros Aristidou"
 __copyright__ = "Petros Aristidou"
 __license__ = "Petros Aristidou"
@@ -18,7 +18,7 @@ from warnings import warn
 from .cases import cfg
 from .globals import __runTimeObs__, __which
 from .simulator import sim
-from .extractor import extractor, curplot
+from .extractor import extractor, curplot, cur
 
 if sys.platform in ('win32', 'cygwin'):
     checkGnuplot = __which('gnuplot.exe')

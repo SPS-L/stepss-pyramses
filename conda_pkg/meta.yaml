@@ -1,6 +1,6 @@
 package:
     name: pyramses
-    version: '0.0.21'
+    version: '0.0.22'
 source:
     path: ../src
 
@@ -15,6 +15,7 @@ requirements:
         - matplotlib
         - mkl
         - intel-openmp
+        - Setuptools
     run:
         - python
         - mkl
@@ -24,7 +25,7 @@ requirements:
         - intel-openmp
 
 about:
-    home: https://sps.cut.ac.cy/pyramses
+    home: https://pyramses.sps-lab.org
     license: Other/Proprietary License
     license_file: LICENSE.rst
     summary: Python library for RAMSES dynamic simulator.

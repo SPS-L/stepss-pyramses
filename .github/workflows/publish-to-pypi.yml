@@ -16,7 +16,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install setuptools wheel twine
+        pip install setuptools wheel twine numpy matplotlib scipy numpy mkl==2024.2.2
     - name: Build package
       run: |
         cd src

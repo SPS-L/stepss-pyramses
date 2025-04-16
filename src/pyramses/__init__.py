@@ -3,7 +3,7 @@
 """Python library for RAMSES dynamic simulator."""
 
 __name__ = "pyramses"
-__version__ = '0.0.45'
+__version__ = '0.0.50'
 __author__ = "Petros Aristidou"
 __copyright__ = "Petros Aristidou"
 __license__ = "Petros Aristidou"

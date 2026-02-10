@@ -85,6 +85,9 @@ ENV/
 
 *.trace
 *.trj
+*.cur
+*.plt
+.lock_RAMSES
 
 # Rope project settings
 .ropeproject

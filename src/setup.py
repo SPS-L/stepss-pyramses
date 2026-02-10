@@ -11,7 +11,7 @@ import os
 def read_file(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
-install_requires = ['matplotlib','scipy','numpy','mkl==2024.2.2']
+install_requires = ['matplotlib','scipy','numpy','mkl==2025.3.1']
 
 from pyramses import __version__, __author__, __email__, __status__, __url__, __name__
 

@@ -83,6 +83,9 @@ ENV/
 # Spyder project settings
 .spyderproject
 
+*.trace
+*.trj
+
 # Rope project settings
 .ropeproject
 /.idea/

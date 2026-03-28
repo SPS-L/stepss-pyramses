@@ -3,16 +3,21 @@ NOTICE
 This repository is part of the STEPSS (Static and Transient Electric Power
 Systems Simulation) suite developed by the Sustainable Power Systems Lab (SPS-L).
 
-The source code in this repository (excluding the RAMSES solver) is licensed
-under the Apache License, Version 2.0. See the LICENSE file for details.
+The source code in this repository is licensed under the Apache License,
+Version 2.0. See the LICENSE file for details.
 
-IMPORTANT — RAMSES Solver License
-==================================
+IMPORTANT — Proprietary Components
+====================================
 
-The RAMSES dynamic simulator (the solver of differential-algebraic equations)
-is NOT covered by the Apache License 2.0. RAMSES is the property of the
+The STEPSS suite includes compiled executables of the following components that
+are NOT covered by the Apache License 2.0:
+
+RAMSES (Dynamic Simulator)
+--------------------------
+
+RAMSES, the solver of differential-algebraic equations, is the property of the
 University of Liège, Belgium, and is distributed under a separate proprietary
-license with the following terms:
+license:
 
   - Permission is granted to use RAMSES free of charge for any non-commercial
     purpose, including teaching and research at universities, colleges, and
@@ -28,6 +33,14 @@ license with the following terms:
     up to 1000 buses and execution using no more than 2 cores.
 
   - RAMSES is provided "as is", without warranty of any kind.
+
+PFC (Power Flow Computation) and CODEGEN (Model Generator)
+-----------------------------------------------------------
+
+PFC and CODEGEN are the property of Dr. Thierry Van Cutsem. They are
+distributed as compiled executables that are free to use but are not
+open-source. Their source code is not included in any of the STEPSS
+repositories.
 
 Authors:
   - Dr. Petros Aristidou (petros.aristidou@cut.ac.cy)

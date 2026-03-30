@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Python module for RAMSES dynamic simulator. It provides an interface through Python to
-perform dynamic simulations and extract data from RAMSES."""
+"""Python interface to the RAMSES dynamic power-system simulator.
+
+Provides :class:`sim`, a ctypes-based wrapper around the RAMSES shared library
+(``ramses.dll`` on Windows, ``ramses.so`` on Linux).  Function signatures are
+read automatically from the bundled ``ramses.h`` C header at instantiation
+time, so the wrapper is self-describing and does not hard-code argument types.
+"""
 
 import ctypes
 import _ctypes
@@ -16,7 +21,22 @@ from .cases import cfg
 from .globals import RAMSESError, CustomWarning, __libdir__, wrapToList
 
 class sim(object):
-    """Simulation class."""
+    """Interface to a RAMSES solver instance.
+
+    Each :class:`sim` object loads the RAMSES shared library into the current
+    process and exposes the solver's C API through Python methods.  The library
+    is unloaded (via :func:`ctypes.FreeLibrary` / :func:`ctypes._ctypes.dlclose`)
+    when the instance is garbage-collected.
+
+    **Thread safety:** RAMSES maintains internal global state; running multiple
+    :class:`sim` instances concurrently in separate threads is not supported.
+    Multiple sequential instances within the same process are safe.
+
+    **Class attributes:**
+
+    - ``ramsesCount`` (*int*) — number of :class:`sim` instances currently alive.
+      Incremented in :meth:`__init__` and decremented in :meth:`__del__`.
+    """
 
     warnings.showwarning = CustomWarning
 
@@ -27,7 +47,29 @@ class sim(object):
     # print(os.path.join(__libdir__,"ramses.dll"))
 
     def __init__(self, custLibDir = None):
-        """Initialize the DLL libraries."""
+        """Load the RAMSES shared library and initialise C function signatures.
+
+        On Windows the library is ``ramses.dll``; on all other platforms it is
+        ``ramses.so``.  By default the library bundled with the package
+        (``src/pyramses/libs/``) is used.  A custom directory can be supplied
+        via *custLibDir* to override that library — useful for testing
+        pre-release solver builds.
+
+        After loading the library, :meth:`_setcalls` is invoked to parse
+        ``ramses.h`` and configure the ctypes argument/return types for every
+        exported function.
+
+        :param custLibDir: path to a directory containing an alternative
+                           ``ramses.dll`` / ``ramses.so``.  The directory must
+                           exist.  When provided, the library file in that
+                           location will be locked by the OS until this instance
+                           is deleted.
+        :type custLibDir: str or None
+        :raises RAMSESError: if *custLibDir* is given but does not exist or is
+                             not a directory.
+        :raises ImportError: if the shared library cannot be loaded (e.g. missing
+                             runtime dependencies such as Intel MKL).
+        """
         if custLibDir is None:
             ramLibDir = __libdir__
         else:
@@ -57,6 +99,11 @@ class sim(object):
         self._setcalls()
 
     def __del__(self):
+        """Unload the RAMSES shared library and decrement the instance counter.
+
+        Called automatically by the garbage collector.  Releases the OS-level
+        handle to the DLL/SO so the file can be replaced or deleted afterwards.
+        """
         warnings.warn("Simulator with number %i was deleted." % self._ramsesNum)
         if sys.platform in ('win32', 'cygwin'):
             _ctypes.FreeLibrary(self._ramseslib._handle)
@@ -65,9 +112,23 @@ class sim(object):
         sim.ramsesCount -= 1
 
     def _c_func_wrapper(self, cdecl_text):
-        """Read the ramses.h file and sets the necessary call types for Python."""
+        """Parse a single C function declaration and configure its ctypes binding.
+
+        Reads one line from ``ramses.h``, extracts the return type, function
+        name, and parameter types, then sets ``restype`` and ``argtypes`` on the
+        corresponding function object retrieved from ``self._ramseslib``.
+
+        :param str cdecl_text: a single-line C function declaration in the form
+                               ``<return_type> <name>(<param_type> <param_name>, ...)``
+        :raises KeyError: (internally caught) if a C type has no ctypes mapping.
+
+        .. note:: Pointer qualifiers (``*``) attached to the variable name are
+                  moved to the type string before lookup, so both ``char* x``
+                  and ``char *x`` are handled correctly.
+        """
 
         def move_pointer_and_strip(type_def, name):
+            """Move any trailing ``*`` from *name* onto *type_def* and strip whitespace."""
             if '*' in name:
                 type_def += ' ' + name[:name.rindex('*') + 1]
                 name = name.rsplit('*', 1)[1]
@@ -113,7 +174,14 @@ class sim(object):
             print(e)
 
     def _setcalls(self):
-        """Define the argument types and returning types for the routines in RAMSES"""
+        """Parse ``ramses.h`` and configure ctypes bindings for all exported functions.
+
+        Reads the C header file bundled with the package line by line, skipping
+        blank lines and ``//`` comments, and delegates each declaration to
+        :meth:`_c_func_wrapper`.
+
+        :raises IOError: if ``ramses.h`` cannot be opened.
+        """
         try:
             with open(os.path.join(__libdir__, "ramses.h"), 'r') as f:
                 _C_HEADER = f.read()
@@ -153,7 +221,20 @@ class sim(object):
         return errMsg.value.decode()
 
     def getJac(self):
-        """Gets the Jacobian matrix written in files
+        """Return the system Jacobian matrices written by RAMSES to temporary files.
+
+        Triggers the RAMSES ``get_Jac`` routine, which writes two sparse matrix
+        files to the current working directory (``py_eqs.dat`` for the structural
+        incidence matrix *E* and ``py_val.dat`` for the Jacobian values *A*).
+        Both files are then parsed and returned as SciPy CSC sparse matrices.
+
+        The simulation must have been initialised (i.e. :meth:`execSim` called
+        with ``pause=0.0``) before this method is called.
+
+        :returns: tuple ``(A, E)`` where *A* is the Jacobian value matrix and
+                  *E* is the structural incidence matrix, both as
+                  :class:`scipy.sparse.csc_matrix` of shape ``(N, N)``.
+        :rtype: tuple
 
         :Example:
 
@@ -209,12 +290,15 @@ class sim(object):
         return A, E
 
     def getCompName(self, comp_type, num):
-        """Return the name of the num:superscript:`th` component of type comp_type.
+        """Return the name of the *num*-th component of the given type.
 
-        :param str comp_type: the component type (BUS, SYNC, INJ, DCTL, BRANCH, TWOP, SHUNT, LOAD)
-        :param int num: The number of the component to be fetched
-        :returns: The component name
-        :rtype: srt
+        :param str comp_type: component type string — one of ``'BUS'``,
+                              ``'SYNC'``, ``'INJ'``, ``'DCTL'``, ``'BRANCH'``,
+                              ``'TWOP'``, ``'SHUNT'``, ``'LOAD'``.
+        :param int num: 1-based index of the component.
+        :returns: component name as returned by RAMSES (trailing whitespace stripped).
+        :rtype: str
+        :raises RAMSESError: if the component does not exist or the call fails.
 
         :Example:
 
@@ -251,11 +335,14 @@ class sim(object):
         return name.value.decode()
 
     def getAllCompNames(self, comp_type):
-        """Get list of all components of type comp_type
+        """Return the names of all components of the given type.
 
-        :param str comp_type: the component type (BUS, SYNC, INJ, DCTL, BRANCH, TWOP, SHUNT, LOAD)
-        :returns: list of component names
+        :param str comp_type: component type string — one of ``'BUS'``,
+                              ``'SYNC'``, ``'INJ'``, ``'DCTL'``, ``'BRANCH'``,
+                              ``'TWOP'``, ``'SHUNT'``, ``'LOAD'``.
+        :returns: list of component names (empty list if none exist).
         :rtype: list of str
+        :raises RAMSESError: if *comp_type* is not recognised.
 
         :Example:
 
@@ -324,9 +411,27 @@ class sim(object):
         return 0
 
     def contSim(self, pause=None):
-        """Continue the simulation until the given time.
+        """Continue a paused simulation until *pause* seconds of simulated time.
 
-        The pause argument is optional and it gives the time until the simulation will stop."""
+        If *pause* is given, :meth:`pauseSim` is called first to schedule the
+        next stop.  Pass ``self.getInfTime()`` to run until the end of the
+        disturbance scenario.
+
+        :param pause: simulated time (in seconds) at which to pause again, or
+                      ``None`` to keep the currently scheduled pause time.
+        :type pause: float or None
+        :returns: ``0`` on success.
+        :rtype: int
+        :raises RAMSESError: if the RAMSES call returns a non-zero, non-112 flag.
+
+        :Example:
+
+        >>> import pyramses
+        >>> ram = pyramses.sim()
+        >>> case = pyramses.cfg("cmd.txt")
+        >>> ram.execSim(case, 0.0)        # initialise and pause at t=0
+        >>> ram.contSim(ram.getInfTime()) # run to end of scenario
+        """
         if pause is not None:
             self.pauseSim(pause)
         retval = self._ramseslib.continue_simul()
@@ -459,7 +564,15 @@ class sim(object):
         return pha
 
     def endSim(self):
-        """End the simulation"""
+        """Signal RAMSES to end the simulation and block until it terminates.
+
+        Sets the internal RAMSES end-of-simulation flag and then calls
+        :meth:`contSim` with an infinite time horizon so that the solver
+        flushes its output and cleans up.
+
+        :returns: return value of the underlying :meth:`contSim` call (``0`` on success).
+        :rtype: int
+        """
 
         self._ramseslib.set_end_simul()
         return self.contSim(self.getInfTime())
@@ -484,11 +597,14 @@ class sim(object):
         return self._ramseslib.get_sim_time()
 
     def getInfTime(self):
-        """Get the maximum representable double from the simulator ()
+        """Return the largest representable double recognised by the RAMSES solver.
 
-        :returns: maximum representable double
+        Passing this value to :meth:`contSim` or :meth:`execSim` instructs
+        RAMSES to run until the end of the disturbance scenario.
+
+        :returns: maximum double value used internally by RAMSES as a sentinel
+                  for "simulate to the end".
         :rtype: float
-
         """
         return self._ramseslib.get_huge_double()
 
@@ -826,11 +942,22 @@ class sim(object):
         return obs_values
 
     def pauseSim(self, t_pause):
-        """Pause the simulation at the t_pause time
+        """Schedule a pause at *t_pause* seconds of simulated time.
 
-        :param t_pause: pause time
-        :type t_pause: float
+        The pause is registered in the solver's internal state and takes effect
+        during the next :meth:`execSim` or :meth:`contSim` call.
 
+        :param float t_pause: simulated time (seconds) at which to pause.
+        :returns: return value from the underlying RAMSES call (non-zero on error).
+        :rtype: int
+
+        :Example:
+
+        >>> import pyramses
+        >>> ram = pyramses.sim()
+        >>> case = pyramses.cfg("cmd.txt")
+        >>> ram.pauseSim(10.0)
+        >>> ram.execSim(case)  # will pause at t=10 s
         """
         return self._ramseslib.set_pause_time(t_pause)
 
@@ -858,53 +985,58 @@ class sim(object):
         return self._ramseslib.add_disturb(t_dist, disturb.encode('utf-8'))
 
     def load_MDL(MDLName):
-        """Load external DLL file with user defined models. Should be in current directory or absolute path.
+        """Load an external shared library containing user-defined RAMSES models.
 
-        :param MDLName: path to file
-        :type MDLName: str
+        The library must expose the standard RAMSES user-model interface.  Once
+        loaded, the models it defines become available to the solver for the
+        lifetime of this :class:`sim` instance.
+
+        :param str MDLName: path to the model library (``*.dll`` on Windows,
+                            ``*.so`` on Linux).  Use the current directory or
+                            an absolute path.
+        :returns: return value from the underlying RAMSES call (non-zero on error).
 
         :Example:
 
         >>> import pyramses
+        >>> pyramses.sim.load_MDL("MDLs.dll")
         >>> ram = pyramses.sim()
-        >>> ram = pyramses.load_MDL("MDLs.dll")
         >>> case = pyramses.cfg("cmd.txt")
-        >>> ram.execSim(case) # simulate
+        >>> ram.execSim(case)
         """
         return self._ramseslib.c_load_MDL(MDLName.encode('utf-8'))
 
     def unload_MDL(MDLName):
-        """Unload external DLL file with user defined models. Should be in current directory or absolute path.
+        """Unload a previously loaded user-model shared library.
 
-        :param MDLName: path to file
-        :type MDLName: str
+        :param str MDLName: path to the model library that was passed to
+                            :meth:`load_MDL`.
+        :returns: return value from the underlying RAMSES call (non-zero on error).
 
         :Example:
 
         >>> import pyramses
+        >>> pyramses.sim.load_MDL("MDLs.dll")
         >>> ram = pyramses.sim()
-        >>> ram = pyramses.load_MDL("MDLs.dll")
         >>> case = pyramses.cfg("cmd.txt")
-        >>> ram.execSim(case) # simulate
-        >>> ram = pyramses.unload_MDL("MDLs.dll")
+        >>> ram.execSim(case)
+        >>> pyramses.sim.unload_MDL("MDLs.dll")
         """
         return self._ramseslib.c_unload_MDL(MDLName.encode('utf-8'))
 
 
     def get_MDL_no():
-        """Unload external DLL file with user defined models. Should be in current directory or absolute path.
+        """Return the number of user-model libraries currently loaded.
 
-        :returns: list of observable values
-        :rtype: list of floats
+        :returns: count of loaded user-model libraries.
+        :rtype: int
 
         :Example:
 
         >>> import pyramses
-        >>> ram = pyramses.sim()
-        >>> ram = pyramses.load_MDL("MDLs.dll")
-        >>> case = pyramses.cfg("cmd.txt")
-        >>> ram.execSim(case) # simulate
-        >>> ram = pyramses.get_MDL_no()
+        >>> pyramses.sim.load_MDL("MDLs.dll")
+        >>> pyramses.sim.get_MDL_no()
+        1
         """
         return self._ramseslib.c_get_MDL_no()
         

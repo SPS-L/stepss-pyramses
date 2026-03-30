@@ -1,6 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Contains the class to extract results simulated with pyramses."""
+"""Post-simulation results extraction for pyramses.
+
+Provides:
+
+- :class:`extractor` — parses a Fortran binary trajectory file (``.trj``)
+  produced by RAMSES and exposes per-component timeseries accessors.
+- :class:`cur` — lightweight NamedTuple holding a ``(time, value, msg)``
+  timeseries with a convenience :meth:`~cur.plot` method.
+- :func:`curplot` — plot one or more :class:`cur` objects on a single axes.
+"""
 
 import warnings
 import os
@@ -15,10 +24,15 @@ from .globals import RAMSESError, CustomWarning, wrapToList
 warnings.showwarning = CustomWarning
 
 def curplot(curves):
-    """Plots multiple curves
+    """Plot one or more timeseries curves on a single matplotlib axes.
 
-    :param list curves: the curves to plot
+    Each curve is drawn as a line and labelled with its ``msg`` attribute.
+    A legend is placed at the best available position and the x-axis is
+    labelled ``'time (s)'``.
 
+    :param curves: a single :class:`cur` or a list of :class:`cur` objects.
+    :type curves: :class:`cur` or list of :class:`cur`
+    :returns: None — displays the plot via :func:`matplotlib.pyplot.show`.
     """
     curves = wrapToList(curves)
     for curve in curves:
@@ -28,13 +42,22 @@ def curplot(curves):
     plt.show()
 
 class cur(NamedTuple):
-    """Class to save results
+    """Immutable container for a single timeseries result.
+
+    Fields:
+
+    - **time** (*numpy.ndarray*) — simulation timestamps in seconds.
+    - **value** (*numpy.ndarray*) — recorded values at each timestamp;
+      units depend on the observable (e.g. pu, MW, Mvar, deg).
+    - **msg** (*str*) — human-readable label describing the quantity
+      (e.g. ``'g1: active power produced (MW)'``).
     """
     time: np.ndarray
     value: np.ndarray
     msg: str
 
     def plot(self):
+        """Plot this timeseries using :func:`curplot`."""
         curplot(self)
 
 class extractor(object):
@@ -53,6 +76,23 @@ class extractor(object):
     """
     
     def __init__(self,traj):
+        """Parse a RAMSES Fortran binary trajectory file.
+
+        The file is structured as a sequence of Fortran unformatted records
+        (read via :class:`scipy.io.FortranFile`).  The header section records
+        the number and names of every monitored component type; the body section
+        contains the timeseries data written in variable-size chunks.
+
+        After construction the results are available as a 2-D NumPy array
+        ``self._results`` of shape ``(n_timesteps, n_observables + 1)``
+        where column 0 is time and the remaining columns are observables in the
+        order defined by RAMSES.  Per-component accessors (``getBus``,
+        ``getSync``, etc.) compute the correct column offset into this array.
+
+        :param str traj: path to the ``.trj`` trajectory file produced by RAMSES.
+        :raises TypeError: if *traj* is not a string.
+        :raises FileNotFoundError: if the file does not exist.
+        """
         if not isinstance(traj, str):
             raise TypeError('PyDyngraph: Class Extractor expects a string path of the trajectory file to initialize.')
         
@@ -64,6 +104,10 @@ class extractor(object):
             
         f = FortranFile(traj, 'r')
         
+        # --- Header: component counts and names ---
+        # Each block: read a count integer, then read that many fixed-width name strings.
+        # Names are Fortran CHARACTER arrays decoded as UTF-8 and whitespace-stripped.
+
         self._busnum = f.read_ints()[0]
         self._busname = []
         for i in range(self._busnum):
@@ -84,6 +128,9 @@ class extractor(object):
         for i in range(self._branum):
             self._braname.append(f.read_record(dtype="S20")[0].decode('UTF-8').strip())
         
+        # Synchronous machines interleave exciter and governor observable metadata.
+        # _adexc[i] / _adtor[i] store the 1-based column offset of machine i's
+        # exciter / governor block inside the results array, enabling O(1) lookup.
         self._syncnum = f.read_ints()[0]
         self._syncname = []
         self._excobsnum = []
@@ -159,10 +206,17 @@ class extractor(object):
             idxdctl = idxdctl + self._dctlobsnum[i]
         self._addctl.append(idxdctl)
         
+        # Total number of scalar observables per timestep.
+        # The layout is: 2·buses + shunts + 2·loads + 6·branches +
+        # (15 + exc_obs + tor_obs)·sync + inj_obs + twop_obs + dctl_obs.
         self._totobs = 2*self._busnum + self._shunum + 2*self._ldnum + 6*self._branum + \
                        15*self._syncnum + sum(self._excobsnum) + sum(self._torobsnum) + \
                        sum(self._injobsnum) + sum(self._twopobsnum) + sum(self._dctlobsnum)
         
+        # --- Body: timeseries data ---
+        # RAMSES writes data in variable-size chunks preceded by a 64-bit buffer-size
+        # integer.  A zero size signals end of data.  All chunks are concatenated
+        # and reshaped into (n_timesteps, n_observables + 1); column 0 is time.
         self._results = []
         buffsz = f.read_ints(np.int64)[0]
         while buffsz > 0:
@@ -172,10 +226,11 @@ class extractor(object):
         
         self._results = np.reshape(self._results, (-1,self._totobs+1), order='C')
         
-        self._time = self._results[:,0]
+        self._time = self._results[:,0]  # column 0 is always the simulation timestamp
         f.close()
  
     def __del__(self):
+        """Emit a warning when this extractor is garbage-collected."""
         warnings.warn("Extractor of file %s was deleted." % self._trajfilename)
     
     def getBus(self, busname):
@@ -202,6 +257,12 @@ class extractor(object):
         except ValueError:
             warnings.warn('Bus %s not found' % (busname))
     class _getBusClass(object):
+        """Accessor object for bus timeseries observables.
+
+        Attributes are set dynamically at construction from ``obsnames``; each
+        attribute holds a :class:`cur` object.  Available attributes:
+        ``mag`` (voltage magnitude, pu), ``pha`` (voltage phase angle, deg).
+        """
         def _getElem(self, j, msg):
             tmp = self._shift + j
             return cur(self._time, self._results[:,tmp], msg)
@@ -244,6 +305,10 @@ class extractor(object):
             warnings.warn('Shunt %s not found' % (shuname))
             
     class _getShuClass(object):
+        """Accessor object for shunt timeseries observables.
+
+        Available attributes: ``Q`` (reactive power produced, Mvar).
+        """
         def _getElem(self, j, msg):
             tmp = self._shift + j
             return cur(self._time, self._results[:,tmp], msg)
@@ -284,6 +349,11 @@ class extractor(object):
             warnings.warn('Load %s not found' % (ldname))
             
     class _getLdClass(object):
+        """Accessor object for load timeseries observables.
+
+        Available attributes: ``P`` (active power consumed, MW),
+        ``Q`` (reactive power consumed, Mvar).
+        """
         def _getElem(self, j, msg):
             tmp = self._shift + j
             return cur(self._time, self._results[:,tmp], msg)
@@ -328,6 +398,12 @@ class extractor(object):
             warnings.warn('Branch %s not found' % (ldnabranameme))
             
     class _getBraClass(object):
+        """Accessor object for branch timeseries observables.
+
+        Available attributes: ``PF``, ``QF`` (P/Q entering at FROM end, MW/Mvar),
+        ``PT``, ``QT`` (P/Q entering at TO end, MW/Mvar),
+        ``RM`` (transformer ratio magnitude), ``RA`` (transformer ratio angle, deg).
+        """
         def _getElem(self, j, msg):
             tmp = self._shift + j
             return cur(self._time, self._results[:,tmp], msg)
@@ -386,6 +462,16 @@ class extractor(object):
             warnings.warn('Sync machine %s not found' % (syncname))
         
     class _getSyncClass(object):
+        """Accessor object for synchronous machine timeseries observables.
+
+        Available attributes (all as :class:`cur` objects):
+        ``P`` (MW), ``Q`` (Mvar), ``A`` (rotor angle wrt COI, deg),
+        ``S`` (rotor speed, pu), ``FW`` (field-winding flux, pu),
+        ``DD`` (d1 damper flux, pu), ``QD`` (q1 damper flux, pu),
+        ``QW`` (q2 winding flux, pu), ``FC`` (field current, pu),
+        ``FV`` (field voltage, pu), ``T`` (mechanical torque, pu),
+        ``ET`` (electromagnetic torque, pu), ``SC`` (COI speed, pu).
+        """
         def _getElem(self, j, msg):
             tmp = self._shift + j
             return cur(self._time, self._results[:,tmp], msg)
@@ -437,6 +523,12 @@ class extractor(object):
             warnings.warn('Sync machine %s not found' % (syncname))
         
     class _getExcClass(object):
+        """Accessor object for exciter timeseries observables.
+
+        Attributes are set dynamically from the observable names defined in the
+        exciter model.  Refer to the RAMSES user manual for the observable names
+        of each supported exciter model.
+        """
         
         def _getElem(self, j, msg):
             tmp = self._shift + j
@@ -461,9 +553,10 @@ class extractor(object):
 
         >>> import pyramses
         >>> case = pyramses.cfg("case.rcfg") # load case from a configuration file
+        >>> ram = pyramses.sim()
         >>> ram.execSim(case) # run the simulation
         >>> ext = pyramses.extractor(case.getTrj())
-        >>> ext.getTor('g1').Tm.plot() # will plot the timeseries simulated for the torque of 'g1' 
+        >>> ext.getTor('g1').Tm.plot() # will plot the timeseries simulated for the torque of 'g1'
         """
         try:
             i=self._syncname.index(syncname) + 1 # +1 is to go to Fortran notation
@@ -474,6 +567,12 @@ class extractor(object):
             warnings.warn('Sync machine %s not found' % (syncname))
         
     class _getTorClass(object):
+        """Accessor object for governor (torque controller) timeseries observables.
+
+        Attributes are set dynamically from the observable names defined in the
+        governor model.  Refer to the RAMSES user manual for the observable names
+        of each supported governor model.
+        """
         
         def _getElem(self, j, msg):
             tmp = self._shift + j
@@ -514,6 +613,12 @@ class extractor(object):
             warnings.warn('Injector %s not found' % (injname))
         
     class _getInjClass(object):
+        """Accessor object for injector timeseries observables.
+
+        Attributes are set dynamically from the observable names defined in the
+        injector model.  Refer to the RAMSES user manual for the observable names
+        of each supported injector model.
+        """
         
         def _getElem(self, j, msg):
             tmp = self._shift + j
@@ -555,6 +660,12 @@ class extractor(object):
             warnings.warn('Twoport %s not found' % (twopname))
         
     class _getTwopClass(object):
+        """Accessor object for two-port device timeseries observables.
+
+        Attributes are set dynamically from the observable names defined in the
+        two-port model.  Refer to the RAMSES user manual for the observable names
+        of each supported two-port model.
+        """
         
         def _getElem(self, j, msg):
             tmp = self._shift + j
@@ -596,6 +707,12 @@ class extractor(object):
             warnings.warn('DCTL %s not found' % (dctlname))
         
     class _getDCTLClass(object):
+        """Accessor object for discrete controller timeseries observables.
+
+        Attributes are set dynamically from the observable names defined in the
+        DCTL model.  Refer to the RAMSES user manual for the observable names
+        of each supported discrete controller model.
+        """
         
         def _getElem(self, j, msg):
             tmp = self._shift + j

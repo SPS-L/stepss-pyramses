@@ -40,11 +40,8 @@ class sim(object):
 
     warnings.showwarning = CustomWarning
 
-    ramsesCount = 0  # Provides a sum of all instances of Ramses running
-    os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"  # This allows to run even if 2 versions of MKL are present on the computer
-
-    # print(__libdir__)
-    # print(os.path.join(__libdir__,"ramses.dll"))
+    ramsesCount = 0  # number of active sim instances
+    os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
     def __init__(self, custLibDir = None):
         """Load the RAMSES shared library and initialise C function signatures.
@@ -80,19 +77,15 @@ class sim(object):
                 else:
                     raise RAMSESError('RAMSES: The path %s does not exist or it is not a directory.' % (custLibDir))
             except OSError as e:
-                raise RAMSESError('RAMSES: The path %s gave an error: ' % (custLibDir), e)
+                raise RAMSESError('RAMSES: The path %s gave an error.' % custLibDir) from e
             
         try:
-            # print(sys.platform)
             if sys.platform in ('win32', 'cygwin'):
                 self._ramseslib = ctypes.CDLL(os.path.join(ramLibDir, "ramses.dll"))
             else:
-                # if (not find_library('iomp5')):
-                # self._omplib = ctypes.CDLL(os.path.join(__libdir__, "libiomp5.so"), mode=ctypes.RTLD_GLOBAL)
-                # self._mkllib = ctypes.CDLL(os.path.join(__libdir__, "libmkl.so"), mode=ctypes.RTLD_GLOBAL)
                 self._ramseslib = ctypes.CDLL(os.path.join(ramLibDir, "ramses.so"))
         except OSError as e:
-            raise ImportError('RAMSES: ', e)
+            raise ImportError('RAMSES: Could not load shared library from %s.' % ramLibDir) from e
 
         sim.ramsesCount += 1
         self._ramsesNum = sim.ramsesCount  # This is the current instance of Ramses
@@ -103,8 +96,12 @@ class sim(object):
 
         Called automatically by the garbage collector.  Releases the OS-level
         handle to the DLL/SO so the file can be replaced or deleted afterwards.
+        Guards against partially-initialised instances (e.g. if ``__init__``
+        raised before the library was loaded).
         """
-        warnings.warn("Simulator with number %i was deleted." % self._ramsesNum)
+        if not hasattr(self, '_ramseslib'):
+            return
+        warnings.warn("Simulator with number %i was deleted." % getattr(self, '_ramsesNum', -1))
         if sys.platform in ('win32', 'cygwin'):
             _ctypes.FreeLibrary(self._ramseslib._handle)
         else:
@@ -168,10 +165,8 @@ class sim(object):
             setattr(func, 'restype', type_lookup(rtn_type))  # set the return type
             setattr(func, 'argtypes', [type_lookup(type_def) for type_def, _ in param_spec])  # set the argument types
         except AttributeError as e:
-            #raise AttributeError(
-            #    'RAMSES: Function %s is listed in ramses.h but cannot be found in the library.' % (name), e)
             warnings.warn('RAMSES: Function %s is listed in ramses.h but cannot be found in the library.' % (name))
-            print(e)
+            warnings.warn(str(e))
 
     def _setcalls(self):
         """Parse ``ramses.h`` and configure ctypes bindings for all exported functions.
@@ -255,9 +250,8 @@ class sim(object):
         
         Nmat = 0
         try:
-            f = open('py_eqs.dat','r')
-            lines = f.readlines()
-            f.close()
+            with open('py_eqs.dat', 'r') as f:
+                lines = f.readlines()
             rowl = []
             coll = []
             datal = []
@@ -273,18 +267,17 @@ class sim(object):
             col = np.array( coll, dtype=int )
             data = np.array( datal, dtype=float )
             E = coo_matrix((data,(row,col)), shape=(Nmat,Nmat)).tocsc()
-        except:
+        except Exception:
             raise RAMSESError('RAMSES: Function get_Jac failed while reading E.')
             
         try:
-            f = open('py_val.dat','r')
-            lines = f.readlines()
-            f.close()
+            with open('py_val.dat', 'r') as f:
+                lines = f.readlines()
             row = np.array( [ int(x.split()[0])-1 for x in lines ], dtype=int )
             col = np.array( [ int(x.split()[1])-1 for x in lines ], dtype=int )
             data = np.array( [ x.split()[2] for x in lines ], dtype=float )
             A = coo_matrix((data,(row,col)), shape=(Nmat,Nmat)).tocsc()
-        except:
+        except Exception:
             raise RAMSESError('RAMSES: Function get_Jac failed while reading A.')
 
         return A, E
@@ -413,7 +406,7 @@ class sim(object):
                   ``pyramses.cfg("cmd.txt")`` before passing it here.
         """
         if not isinstance(cmd, cfg):
-            raise TypeError('RAMSES: Function execSim because the command file is not of type pyramses.cfg()')
+            raise TypeError('RAMSES: Function execSim failed because the command file is not of type pyramses.cfg()')
         if pause is not None:
             self.pauseSim(pause)
         cmdfilename = cmd.writeCmdFile()
@@ -1019,7 +1012,7 @@ class sim(object):
         """
         return self._ramseslib.add_disturb(t_dist, disturb.encode('utf-8'))
 
-    def load_MDL(MDLName):
+    def load_MDL(self, MDLName):
         """Load an external shared library containing user-defined RAMSES models.
 
         The library must expose the standard RAMSES user-model interface.  Once
@@ -1041,7 +1034,7 @@ class sim(object):
         """
         return self._ramseslib.c_load_MDL(MDLName.encode('utf-8'))
 
-    def unload_MDL(MDLName):
+    def unload_MDL(self, MDLName):
         """Unload a previously loaded user-model shared library.
 
         :param str MDLName: path to the model library that was passed to
@@ -1060,7 +1053,7 @@ class sim(object):
         return self._ramseslib.c_unload_MDL(MDLName.encode('utf-8'))
 
 
-    def get_MDL_no():
+    def get_MDL_no(self):
         """Return the number of user-model libraries currently loaded.
 
         :returns: count of loaded user-model libraries.
@@ -1074,7 +1067,3 @@ class sim(object):
         1
         """
         return self._ramseslib.c_get_MDL_no()
-        
-
-    
-#int get_MDL_names(int mxreclen, char *DLL_Names);

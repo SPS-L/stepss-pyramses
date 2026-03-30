@@ -16,7 +16,7 @@ Module-level flags set at import time:
   observable plots are therefore enabled; ``False`` otherwise.
 """
 
-__name__ = "pyramses"
+__package_name__ = "pyramses"
 __version__ = '0.0.70'
 __author__ = "Petros Aristidou"
 __copyright__ = "Petros Aristidou"
@@ -29,18 +29,25 @@ __status__ = "5 - Production/Stable"
 import sys
 from warnings import warn
 
+from . import globals as _globals
 from .cases import cfg
-from .globals import __runTimeObs__, __which
+from .globals import __which
 from .simulator import sim
 from .extractor import extractor, curplot, cur
 
-# Detect gnuplot at import time; disable runtime observables if not found.
+__all__ = ["cfg", "sim", "extractor", "cur", "curplot"]
+
+# Detect gnuplot at import time; propagate result to globals so that cases.py
+# (which reads __runTimeObs__ from globals at import time) also gets the correct value.
 if sys.platform in ('win32', 'cygwin'):
     checkGnuplot = __which('gnuplot.exe')
 else:
     checkGnuplot = __which('gnuplot')
 if checkGnuplot is None:
     warn("RAMSES: Gnuplot executable could not be found in the system path, so the runtime observables are disabled.")
-    __runTimeObs__ = False
+    _globals.__runTimeObs__ = False
 else:
-    __runTimeObs__ = True
+    _globals.__runTimeObs__ = True
+
+# Re-export the (now-updated) flag under the expected public name.
+__runTimeObs__ = _globals.__runTimeObs__

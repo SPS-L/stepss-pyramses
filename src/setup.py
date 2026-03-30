@@ -18,7 +18,7 @@ def read_file(fname):
 
 install_requires = ['matplotlib','scipy','numpy','mkl==2025.3.1']
 
-from pyramses import __version__, __author__, __email__, __status__, __url__, __name__
+from pyramses import __version__, __author__, __email__, __status__, __url__, __package_name__ as __name__
 
 setup(
     name=__name__,

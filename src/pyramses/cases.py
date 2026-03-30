@@ -7,10 +7,10 @@ by the RAMSES solver and serialises them into the RAMSES command-file format.
 """
 
 import os
-import tempfile
 import warnings
 
-from .globals import RAMSESError, __runTimeObs__, CustomWarning, silentremove
+from . import globals as _globals
+from .globals import RAMSESError, CustomWarning
 
 warnings.showwarning = CustomWarning
 
@@ -94,7 +94,6 @@ class cfg(object):
                 with open(cmd) as data:
                     content = data.read().splitlines()
                     for line in content:
-                        # print line
                         token = line.split()
                         if typeread == 1:
                             if len(token) > 0:
@@ -102,7 +101,6 @@ class cfg(object):
                             else:
                                 if not self._dataset:
                                     raise Exception('RAMSES: At least one datafile is necessary in the command file.')
-                                    return
                                 typeread += 1
                         elif typeread == 2:
                             if len(token) > 0:
@@ -116,7 +114,6 @@ class cfg(object):
                                 typeread += 1
                             else:
                                 raise Exception('RAMSES: At least one dstfile is necessary in the command file.')
-                                return
                         elif typeread == 4:
                             if len(token) > 0:
                                 self.addTrj(line)
@@ -147,8 +144,8 @@ class cfg(object):
                                 self.addRunObs(line)
                             else:
                                 typeread += 1
-            except IOError as e:
-                raise IOError("RAMSES: I/O error({0}): {1}".format(e.errno, e.strerror))
+            except IOError:
+                raise
 
     def writeCmdFile(self, userFile=None):
         """Serialise the case to a RAMSES command file.
@@ -212,14 +209,13 @@ class cfg(object):
         except IOError as e:
             raise IOError("RAMSES: I/O error({0}): {1}".format(e.errno, e.strerror))
 
-        if userFile == None:
+        if userFile is None:
             return cmdFile
         else:
             if os.path.isfile(userFile):
                 warnings.warn('The file %s already exists. It will be overwritten!' % (userFile))
-            text_file = open(userFile, "w")
-            text_file.write(cmdFile)
-            text_file.close()
+            with open(userFile, "w") as text_file:
+                text_file.write(cmdFile)
             return 0
 
     # def __del__(self):
@@ -425,7 +421,7 @@ class cfg(object):
 
 
         """
-        if __runTimeObs__:
+        if _globals.__runTimeObs__:
             if runobs not in self._runobs:
                 self._runobs.append(runobs)
         else:

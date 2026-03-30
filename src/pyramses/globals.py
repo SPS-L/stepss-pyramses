@@ -47,7 +47,8 @@ def read_file(fname):
     :rtype: str
     :raises IOError: if the file cannot be opened
     """
-    return open(os.path.join(os.path.dirname(__file__), fname)).read()
+    with open(os.path.join(os.path.dirname(__file__), fname)) as f:
+        return f.read()
 
 
 class RAMSESError(Exception):
@@ -77,7 +78,7 @@ def __which(program):
         if is_exe(program):
             return program
     else:
-        for path in os.environ["PATH"].split(os.pathsep):
+        for path in os.environ.get("PATH", "").split(os.pathsep):
             path = path.strip('"')
             exe_file = os.path.join(path, program)
             if is_exe(exe_file):

@@ -101,7 +101,7 @@ class extractor(object):
         :raises FileNotFoundError: if the file does not exist.
         """
         if not isinstance(traj, str):
-            raise TypeError('PyDyngraph: Class Extractor expects a string path of the trajectory file to initialize.')
+            raise TypeError('pyramses: extractor expects a string path to the trajectory file.')
         
         self._trajfilename = traj
         
@@ -224,12 +224,13 @@ class extractor(object):
         # RAMSES writes data in variable-size chunks preceded by a 64-bit buffer-size
         # integer.  A zero size signals end of data.  All chunks are concatenated
         # and reshaped into (n_timesteps, n_observables + 1); column 0 is time.
-        self._results = []
+        # Collect all data chunks first, then concatenate once for O(N) performance.
+        chunks = []
         buffsz = f.read_ints(np.int64)[0]
         while buffsz > 0:
-            temp = f.read_reals(dtype=np.float64)
-            self._results = np.concatenate((self._results, temp))
+            chunks.append(f.read_reals(dtype=np.float64))
             buffsz = f.read_ints(np.int64)[0]
+        self._results = np.concatenate(chunks) if chunks else np.array([])
         
         self._results = np.reshape(self._results, (-1,self._totobs+1), order='C')
         
@@ -238,7 +239,8 @@ class extractor(object):
  
     def __del__(self):
         """Emit a warning when this extractor is garbage-collected."""
-        warnings.warn("Extractor of file %s was deleted." % self._trajfilename)
+        if hasattr(self, '_trajfilename'):
+            warnings.warn("Extractor of file %s was deleted." % self._trajfilename)
     
     def getBus(self, busname):
         """Returns an object that allows to extract or plot bus related variables.
@@ -402,7 +404,7 @@ class extractor(object):
             return self._getBraClass(self._time, self._results, 2*self._busnum+
                                  self._shunum+2*self._ldnum+6*(i-1), braname)
         except ValueError:
-            warnings.warn('Branch %s not found' % (ldnabranameme))
+            warnings.warn('Branch %s not found' % (braname))
             
     class _getBraClass(object):
         """Accessor object for branch timeseries observables.

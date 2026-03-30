@@ -61,7 +61,7 @@ Minimal installation (no plotting or notebook support)::
 Linux System Prerequisites
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-On Linux, ``ramses.so`` links against the following system libraries which must be installed separately before running PyRAMSES::
+On Linux, the following system libraries must be installed before running PyRAMSES::
 
    sudo apt install libopenblas0 libgfortran5 libgomp1
 

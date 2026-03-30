@@ -22,10 +22,10 @@ There is **no test suite or linter configured**. Validate changes against one of
 - Nordic test system: `git@github.com:SPS-L/Nordic_JhubStart.git`
 - 5-bus test system: `git@github.com:SPS-L/5_bus_test_system.git`
 
-The `dynsim` console entry point (defined in `src/setup.py`) runs simulations from a command file:
+The `ramses` console entry point (defined in `src/setup.py`) runs simulations from a command file:
 
 ```bash
-dynsim -t cmd.txt
+ramses -t cmd.txt
 ```
 
 ## Architecture
@@ -41,7 +41,7 @@ Three public classes form the entire API, exposed via `src/pyramses/__init__.py`
 Supporting pieces:
 - `cur(NamedTuple)` — holds a `(time, value, msg)` timeseries; has a `.plot()` method
 - `RAMSESError` / `CustomWarning` — in `globals.py`
-- `scripts/exec.py` — thin CLI wrapper used by the `dynsim` entry point
+- `scripts/exec.py` — thin CLI wrapper used by the `ramses` entry point
 
 ### Typical Workflow
 
@@ -117,4 +117,4 @@ Optional: `gnuplot` system binary for runtime observable plots during simulation
 
 ## License Note
 
-The Python wrapper is Apache 2.0. The RAMSES, PFC, and CODEGEN binaries in `libs/` are **proprietary** (University of Liège / Dr. Thierry Van Cutsem) and free only for non-commercial use with a cap of 1000 buses and 2 CPU cores. Do not redistribute or modify those binaries.
+The Python wrapper is Apache 2.0. The RAMSES, PFC, and CODEGEN binaries in `libs/` are **proprietary** (check https://stepss.sps-lab.org/getting-started/license/) and free only for non-commercial use with a cap of 1000 buses and 2 CPU cores. Do not redistribute or modify those binaries.

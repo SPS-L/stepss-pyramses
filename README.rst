@@ -1,18 +1,160 @@
-About
------
+|PyPI version| |PyPI status| |PyPI python| |Docs status| |Docs commit|
 
-PyRAMSES is a Python module that facilitates the use of the dynamic simulator RAMSES. The module provides basic functionality like defining test-cases, running a simulation, extracting information, etc. As well as more advanced integration of the simulator into the remaining Python code.
+.. |PyPI version| image:: https://img.shields.io/pypi/v/pyramses
+   :target: https://pypi.org/project/pyramses/
+   :alt: PyPI version
 
-Please check the documentation under `https://stepss.sps-lab.org <https://stepss.sps-lab.org>`_.
+.. |PyPI status| image:: https://img.shields.io/pypi/status/pyramses
+   :target: https://pypi.org/project/pyramses/
+   :alt: PyPI status
 
-Check the LICENSE file before using this software.
+.. |PyPI python| image:: https://img.shields.io/pypi/pyversions/pyramses
+   :target: https://pypi.org/project/pyramses/
+   :alt: Python versions
 
-Models included in current version:
------------------------------------
+.. |Docs status| image:: https://img.shields.io/github/actions/workflow/status/SPS-L/stepss-docs/deploy.yml?branch=main&label=docs
+   :target: https://github.com/SPS-L/stepss-docs/
+   :alt: Docs deploy status
 
-- Injectors =  ['BESSWithChanges', 'vfd_load', 'IBG', 'indmach1', 'svc_hq_generic1', 'PQ', 'WT3WithChanges', 'WT4WithChanges', 'restld', 'theveq', 'indmach2', 'load']
-- Exciters =  ['IEEET5', 'AC1A_RETRO', 'AC8B_PSS3B_lim', 'EXHQSC_PSS4B_MAXEX2', 'ST1A_PSS3B', 'ST1A_IEEEST', 'generic2', 'ST1A', 'AC4A', 'ST1A_PSS4B_OELHQ', 'generic1', 'ST1A_PSS4B', 'EXPIC1_PSS2B_MAXEX2', 'ST2A', 'DC3A', 'ST1A_PSS2B_OELHQ', 'EXHQSC_PSS4B_OELHQ', 'EXHQSC_PSS4B', 'ST1A_PSS3B_OELHQ', 'GENERIC3', 'ENTSOE_simp', 'ST1A_PSS2B', 'EXPIC1_PSS2B', 'ST1A_lim', 'AC1A_RETRO_PSS4B', 'AC8B', 'ST1A_OELHQ', 'kundur', '1storder', 'EXPIC1', 'EXHQSC_MAXEX2', 'ST1A_PSS4B_MAXEX2', 'hq_generic1', 'ST1A_PSS2B_MAXEX2', 'AC1A', 'EXHQSC', 'constant', 'GENERIC4', 'AC1A_OELHQ', 'ST1A_IEEEST_MAXEX2', 'AC1A_MAXEX2']
-- Speed governors =  ['HQRVC', 'thermal_generic1', 'HQRVM', '1storder', 'DEGOV1', 'hq_generic', 'HQRVW', 'constant', 'ENTSOE_simp', 'ENTSOE_simp_consensus_mod', 'hydro_generic1', 'ENTSOE_simp_consensus', 'HQRVN', 'hq_generic1']
-- Two-ports =  ['HQSVC', 'DC_BHPM', 'HVDC_LCC', 'DC_CHAAUT', 'CHENIER', 'HVDC_VSC_SC', 'vsc_hq', 'CSVGN5', 'DCL_WCL', 'HVDC_VSC']
-- Discrete controllers =  ['sim_minmaxspeed', 'mais', 'ltcinv', 'FRT', 'oltc2', 'ltc', 'uvls', 'uvprot', 'pst', 'rt', 'sim_minmaxvolt', 'ltc2', 'HQmais', 'voltage_variability']
+.. |Docs commit| image:: https://img.shields.io/github/last-commit/SPS-L/stepss-docs
+   :target: https://github.com/SPS-L/stepss-docs/
+   :alt: Docs last commit
+
+PyRAMSES: Python Interface to RAMSES
+=====================================
+
+PyRAMSES is a Python interface to the `RAMSES <https://stepss.sps-lab.org/getting-started/overview/>`_ dynamic simulator — part of the `STEPSS <https://stepss.sps-lab.org/>`_ power system simulation suite. It covers the full simulation workflow: defining test cases, launching simulations, querying system state at runtime, and extracting and plotting results.
+
+STEPSS has been developed by `Dr. Petros Aristidou <https://sps-lab.org/>`_ (Cyprus University of Technology) and Dr. Thierry Van Cutsem (University of Liège).
+
+Overview
+--------
+
+PyRAMSES enables scripted power system dynamic simulations from Python or Jupyter notebooks. It exposes the full capability of the RAMSES solver through a clean Python API, with pre-compiled binaries bundled for Windows and Linux — no separate solver installation required.
+
+RAMSES (RApid Multiprocessor Simulation of Electric power Systems) simulates the dynamic evolution of power systems under the phasor approximation, using Backward Euler, Trapezoidal, or BDF2 integration with OpenMP parallelism.
+
+Key Features
+------------
+
+- **Complete simulation workflow** — define cases, run simulations, pause/continue, and extract results, all from Python
+- **Runtime interaction** — query bus voltages, branch flows, and component observables while paused; inject disturbances on-the-fly
+- **Trajectory post-processing** — extract and plot time-series results from Fortran binary trajectory files
+- **Parameter sweeps** — script multiple simulations with varying parameters or disturbances
+- **Eigenanalysis support** — export system Jacobian matrices for small-signal stability analysis
+- **Bundled binaries** — pre-compiled RAMSES shared libraries (``ramses.dll`` / ``ramses.so``) for Windows and Linux
+- **Scientific Python integration** — works natively with NumPy, SciPy, Matplotlib, and Jupyter
+
+Installation
+------------
+
+Install PyRAMSES and all recommended dependencies via pip::
+
+   pip install matplotlib scipy numpy mkl jupyter ipython pyramses
+
+Minimal installation (no plotting or notebook support)::
+
+   pip install pyramses
+
+**Optional:** Install `Gnuplot <http://www.gnuplot.info/>`_ to enable real-time observable plots during simulation. PyRAMSES will still work without it, but runtime plots will be disabled.
+
+Platform Support
+~~~~~~~~~~~~~~~~
+
+.. list-table::
+   :widths: 20 20 60
+   :header-rows: 1
+
+   * - Platform
+     - Binary
+     - Notes
+   * - Windows
+     - ``ramses.dll``
+     - Primary platform, full support
+   * - Linux
+     - ``ramses.so``
+     - Full support
+
+The free version is limited to 1000 buses and 2 OpenMP cores. See the `License <https://stepss.sps-lab.org/getting-started/license/>`_ page for full terms.
+
+Quick Start
+-----------
+
+.. code-block:: python
+
+   import pyramses
+
+   # 1. Define the test case
+   case = pyramses.cfg()
+   case.addData('dyn.dat')        # dynamic model data
+   case.addData('volt_rat.dat')   # power-flow initialisation
+   case.addData('settings.dat')   # solver settings
+   case.addDst('fault.dst')       # disturbance sequence
+   case.addObs('obs.dat')         # define observables to record
+   case.addTrj('output.trj')      # trajectory output file
+
+   # 2. Run simulation
+   ram = pyramses.sim()
+   ram.execSim(case)              # run to completion
+
+   # 3. Extract and plot results
+   ext = pyramses.extractor(case.getTrj())
+   ext.getBus('1041').mag.plot()  # bus voltage magnitude
+   ext.getSync('g1').S.plot()     # generator rotor speed
+
+For interactive usage, pause/continue and on-the-fly disturbance injection is supported:
+
+.. code-block:: python
+
+   ram = pyramses.sim()
+   ram.execSim(case, 0.0)                        # initialise, paused at t=0
+   ram.addDisturb(10.0, 'BREAKER SYNC_MACH g7 0')  # schedule generator trip
+   ram.contSim(ram.getInfTime())                 # run to end of time horizon
+   ram.endSim()
+
+Main Classes
+------------
+
+.. list-table::
+   :widths: 25 75
+   :header-rows: 1
+
+   * - Class
+     - Description
+   * - ``pyramses.cfg``
+     - Defines a test case: data files, disturbance file, output files, observables, and runtime options.
+   * - ``pyramses.sim``
+     - Runs simulations. Supports start/pause/continue, runtime queries, and on-the-fly disturbance injection.
+   * - ``pyramses.extractor``
+     - Extracts and visualises time-series results from trajectory (``.trj``) files produced by a simulation.
+
+Documentation
+-------------
+
+Full documentation is available at `https://stepss.sps-lab.org/pyramses/ <https://stepss.sps-lab.org/pyramses/>`_.
+
+- `Overview <https://stepss.sps-lab.org/pyramses/overview/>`_
+- `Installation <https://stepss.sps-lab.org/pyramses/installation/>`_
+- `API Reference <https://stepss.sps-lab.org/pyramses/api-reference/>`_
+- `Examples <https://stepss.sps-lab.org/pyramses/examples/>`_
+
+License
+-------
+
+PyRAMSES (the Python wrapper) is distributed under the `Apache License 2.0 <LICENSE.rst>`_.
+
+The RAMSES solver (the dynamic library bundled in this package) is proprietary software owned by the University of Liège and is free for non-commercial use (teaching, academic research, personal purposes), with a limit of 1000 buses and 2 CPU cores. For commercial use or larger models, contact the authors. See the `STEPSS License page <https://stepss.sps-lab.org/getting-started/license/>`_ for full terms.
+
+Authors
+-------
+
+- `Dr. Petros Aristidou <https://sps-lab.org/>`_ — Cyprus University of Technology
+- Dr. Thierry Van Cutsem — Emeritus, University of Liège
+
+Support
+-------
+
+- Documentation: `https://stepss.sps-lab.org/pyramses/ <https://stepss.sps-lab.org/pyramses/>`_
+- Issues: `https://github.com/SPS-L/stepss-PyRAMSES/issues <https://github.com/SPS-L/stepss-PyRAMSES/issues>`_
+- Project page: `https://sps-lab.org/project/pyramses/ <https://sps-lab.org/project/pyramses/>`_
 

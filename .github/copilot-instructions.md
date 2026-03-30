@@ -12,9 +12,6 @@ cd src && pip install -e .
 
 # Build for PyPI
 cd src && python setup.py sdist bdist_wheel
-
-# Build for Conda
-cd conda_pkg && conda-build .
 ```
 
 There is **no test suite or linter configured**. Validate changes against one of the example repositories:

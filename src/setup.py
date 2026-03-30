@@ -13,8 +13,14 @@ except ImportError:
     from distutils.core import setup, find_packages
 import os
 
-def read_file(fname):
-    return open(os.path.join(os.path.dirname(__file__), fname)).read()
+def read_first_existing(*paths):
+    base = os.path.dirname(__file__)
+    for path in paths:
+        full_path = os.path.join(base, path)
+        if os.path.exists(full_path):
+            with open(full_path, encoding='utf-8') as f:
+                return f.read()
+    raise FileNotFoundError("None of the candidate files exist: {}".format(paths))
 
 install_requires = ['matplotlib','scipy','numpy','mkl==2025.3.1']
 
@@ -29,7 +35,9 @@ setup(
     url=__url__,
     keywords=['RAMSES', 'Power Systems', 'Simulator','STEPSS'],
     license='Apache-2.0',
-    long_description=read_file('README.rst'),
+    # Prefer the repository-level README as the single source of truth.
+    # Keep a local fallback for legacy build contexts that only copy ./src.
+    long_description=read_first_existing('../README.rst', 'README.rst'),
     long_description_content_type='text/x-rst',
     packages=find_packages(),
     install_requires=install_requires, 

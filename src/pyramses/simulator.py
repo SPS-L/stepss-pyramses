@@ -380,21 +380,37 @@ class sim(object):
         return names
 
     def execSim(self, cmd, pause=None):
-        """Run a simulation.
+        """Execute a RAMSES simulation.
 
-        :param cmd: provides the case description
-        :type cmd: type(:class:`.cfg`)
-        :param t_pause: pause time (optional). If not given, the simulation will run until the end as described in the dst file.
-        :type t_pause: float
+        Serialises *cmd* to a RAMSES command file (via :meth:`~pyramses.cfg.writeCmdFile`),
+        then calls the RAMSES solver.  If *pause* is supplied, the simulation is
+        scheduled to stop at that simulated time and can be resumed later with
+        :meth:`contSim`.  Pass ``pause=0.0`` to initialise only (power-flow
+        solution) without running the dynamic simulation.
+
+        :param cmd: case configuration describing all input and output files.
+        :type cmd: :class:`pyramses.cfg`
+        :param pause: simulated time (seconds) at which to pause, or ``None``
+                      to run until the end of the disturbance scenario.
+        :type pause: float or None
+        :returns: ``0`` on success.
+        :rtype: int
+        :raises TypeError: if *cmd* is not a :class:`pyramses.cfg` instance.
+        :raises RAMSESError: if the solver returns a non-zero, non-112 flag.
+
+        .. note:: Return code ``112`` means the simulation paused normally; it
+                  is treated as success by this method.
 
         :Example:
 
         >>> import pyramses
         >>> ram = pyramses.sim()
         >>> case = pyramses.cfg("cmd.txt")
-        >>> ram.execSim(case) # start simulation
+        >>> ram.execSim(case)               # run to end
+        >>> ram.execSim(case, pause=0.0)    # initialise only, then pause
 
-        .. note:: If you have an existing command file, you can pass it to the simulator as pyramses.cfg("cmd.txt")
+        .. note:: If you have an existing command file, you can load it with
+                  ``pyramses.cfg("cmd.txt")`` before passing it here.
         """
         if not isinstance(cmd, cfg):
             raise TypeError('RAMSES: Function execSim because the command file is not of type pyramses.cfg()')
@@ -578,21 +594,22 @@ class sim(object):
         return self.contSim(self.getInfTime())
     
     def getEndSim(self):
-        """Check if the simulation has ended
-        
-        :returns: 0 -> simulation is still working, 1 -> simulation has ended
-        :rtype: integer
-        
+        """Check whether the simulation has ended.
+
+        :returns: ``0`` if the simulation is still running; ``1`` if it has ended.
+        :rtype: int
         """
 
         return self._ramseslib.get_end_simul()
 
     def getSimTime(self):
-        """Get the current simulation time
+        """Return the current simulated time reported by the RAMSES solver.
 
-        :returns: current simulation time in RAMSES.
+        Only meaningful while a simulation is paused (between :meth:`execSim`
+        and :meth:`contSim` calls).
+
+        :returns: current simulation time in seconds.
         :rtype: float
-
         """
         return self._ramseslib.get_sim_time()
 
@@ -608,11 +625,16 @@ class sim(object):
         """
         return self._ramseslib.get_huge_double()
 
-    def initObserv(self,traj_filenm):
-        """Initialize observable selection (structure and trajectory file)
+    def initObserv(self, traj_filenm):
+        """Initialise the runtime observable recording system.
 
-        :param traj_filenm: the file to save the trajectory at
-        :type traj_filenm: str
+        Must be called after :meth:`execSim` (with ``pause=0.0``) and before
+        :meth:`addObserv` / :meth:`finalObserv`.  Sets the path of the output
+        trajectory file and prepares the internal observable structures.
+
+        :param str traj_filenm: path of the ``.trj`` file where recorded
+                                timeseries will be written.
+        :returns: return value from the underlying RAMSES call (non-zero on error).
 
         :Example:
 
@@ -626,11 +648,15 @@ class sim(object):
 
         return self._ramseslib.initObserv(traj_filenm.encode('utf-8'))
 
-    def addObserv(self,string):
-        """Add an element to be observed
+    def addObserv(self, string):
+        """Register one observable element for runtime recording.
 
-        :param string: the element with proper format
-        :type string: str
+        Must be called after :meth:`initObserv` and before :meth:`finalObserv`.
+        Accepts RAMSES observable selector strings such as ``'BUS *'`` (all
+        buses) or ``'SYNC g1'`` (a specific generator).
+
+        :param str string: observable selector in RAMSES format.
+        :returns: return value from the underlying RAMSES call (non-zero on error).
 
         :Example:
 
@@ -647,7 +673,13 @@ class sim(object):
         return self._ramseslib.addObserv(string.encode('utf-8'))
 
     def finalObserv(self):
-        """Finalize observable selection, allocate buffer, and write header of trajectory file
+        """Finalise observable selection, allocate recording buffers, and write the trajectory file header.
+
+        Must be called after all :meth:`addObserv` calls.  RAMSES will write
+        timeseries data to the ``.trj`` file specified in :meth:`initObserv`
+        as the simulation advances.
+
+        :returns: return value from the underlying RAMSES call (non-zero on error).
 
         :Example:
 
@@ -733,6 +765,9 @@ class sim(object):
         >>> case = pyramses.cfg("cmd.txt")
         >>> ram.execSim(case, 0.0)
         >>> ram.defineSS(1, ['735'], [], []) # SS 1 with all buses at 735 kV, no zones, no list of buses
+
+        :raises RAMSESError: if *ssID*, *location*, or *in_service* are not valid, or the RAMSES call fails.
+        :returns: ``None``
 
         .. note:: An empty filter means it is deactivated and discarded.
 
@@ -903,7 +938,7 @@ class sim(object):
           For the synchronous generator ('SYN') the accepted obs_name values are 
           - 'P': Active power (MW)
           - 'Q': Reactive power (MVAr)
-          -'Omega': Machine speed (pu)
+          - ``'Omega'``: Machine speed (pu)
           - 'S': Apparent power (MVA)
           - 'SNOM': Nominal apparent power (MVA)
           - 'PNOM': Nominal active power (MW)

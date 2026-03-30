@@ -61,9 +61,16 @@ class cur(NamedTuple):
         curplot(self)
 
 class extractor(object):
-    """The extractor class is used to extract the timeseries data after the simulation and process them. 
-    
-    :param str rtraj: the path to the ramses trajectory file. This should be the same file that was set in the case with case.addTrj('filenm.rtrj').
+    """Parse RAMSES trajectory files and expose per-component timeseries accessors.
+
+    After running a RAMSES simulation, the results are stored in a Fortran binary
+    trajectory file (``.trj``).  This class reads that file and provides
+    convenience methods to retrieve timeseries for each supported component type
+    (buses, branches, synchronous machines, exciters, governors, injectors,
+    two-ports, and DCTLs).
+
+    :param str traj: path to the RAMSES trajectory file produced during the
+                     simulation (as set with :meth:`~pyramses.cfg.addTrj`).
 
     :Example:
 
@@ -72,7 +79,7 @@ class extractor(object):
     >>> ram = pyramses.sim()
     >>> ram.execSim(case) # run the simulation
     >>> ext = pyramses.extractor(case.getTrj())
-    >>> ext.getBus('1041').mag.plot() # will plot the timeseries simulated for the voltage magnitude on bus '1041'
+    >>> ext.getBus('1041').mag.plot() # plot the voltage magnitude timeseries for bus '1041'
     """
     
     def __init__(self,traj):

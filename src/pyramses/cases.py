@@ -88,10 +88,6 @@ class cfg(object):
         self._cont = []  # continuous trace file
         self._obs = []  # observables file
         self._trj = []  # trajectory file
-        #self._cmdfile = tempfile.NamedTemporaryFile(prefix='pyramses_', suffix='.txt', dir=os.getcwd(),
-        #                                            delete=False)  # text file to pass to Ramses
-        #self._cmdfile.close()
-
         if cmd:
             try:
                 typeread = 1  # 1=data, 2=init, 3=dst, 4=trj, 5=obs,6=cont, 7=disc, 8=runtime obs
@@ -227,7 +223,7 @@ class cfg(object):
             return 0
 
     # def __del__(self):
-        # silentremove(self._cmdfile.name)
+    #     silentremove(self._cmdfile.name)
 
     def addInit(self, afile):
         """Set the file where the simulation initialisation trace will be saved.
@@ -253,11 +249,10 @@ class cfg(object):
         self._init.append(afile)
 
     def getInit(self):
-        """Return initialization trace file
-        
-        :returns: name of file
+        """Return the initialisation trace file path.
+
+        :returns: path of the initialisation trace file, or an empty string if none is set.
         :rtype: str
-        
         """
         if self._init:
             return self._init[0]
@@ -282,11 +277,10 @@ class cfg(object):
         self._out.append(afile)
 
     def getOut(self):
-        """Return output trace file
-        
-        :returns: name of file
+        """Return the output trace file path.
+
+        :returns: path of the output trace file, or an empty string if none is set.
         :rtype: str
-        
         """
         if self._out:
             return self._out[0]
@@ -329,9 +323,14 @@ class cfg(object):
             return ''
 
     def addTrj(self, afile):
-        """Add trajectory file
+        """Set the Fortran binary trajectory output file.
 
-        :param str afile: the filename. The complete path can be given or a the path relative to the working directory (os.getcwd())
+        The trajectory file is written by RAMSES during the simulation and later
+        parsed by :class:`~pyramses.extractor.extractor` to extract timeseries
+        for individual components.
+
+        :param str afile: the filename. The complete path can be given or a path
+                          relative to the working directory (``os.getcwd()``).
 
         :Example:
 
@@ -339,7 +338,7 @@ class cfg(object):
         >>> case1 = pyramses.cfg()
         >>> case1.addTrj("output.trj")
 
-        .. warning:: If the file already exists, it will be ovewritten without warning!
+        .. warning:: If the file already exists, it will be overwritten without warning!
         """
         del self._trj[:]
         if os.path.isfile(afile):
@@ -347,11 +346,10 @@ class cfg(object):
         self._trj.append(afile)
 
     def getTrj(self):
-        """Return trajectory file
-        
-        :returns: name of file
+        """Return the trajectory output file path.
+
+        :returns: path of the trajectory file, or an empty string if none is set.
         :rtype: str
-        
         """
         if self._trj:
             return self._trj[0]
@@ -359,13 +357,14 @@ class cfg(object):
             return ''
 
     def addDisc(self, afile):
-        """Add discrete trace file.
-        
-        The discrete trace file saves information about the discrete events in the system, these may be
-        from the discrete controllers, events in the disturbance file, or from discrete variables inside
-        the injector, twoport, torque, or exciter models.
+        """Set the discrete events trace output file.
 
-        :param str afile: the filename. The complete path can be given or a the path relative to the working directory (os.getcwd())
+        The discrete trace records events that occur during the simulation, such
+        as discrete controller transitions, disturbance-file events, and state
+        changes inside injector, two-port, torque, or exciter models.
+
+        :param str afile: the filename. The complete path can be given or a path
+                          relative to the working directory (``os.getcwd()``).
 
         :Example:
 
@@ -373,7 +372,7 @@ class cfg(object):
         >>> case1 = pyramses.cfg()
         >>> case1.addDisc("disc.trace")
 
-        .. warning:: If the file already exists, it will be ovewritten without warning!
+        .. warning:: If the file already exists, it will be overwritten without warning!
         """
         del self._disc[:]
         if os.path.isfile(afile):
@@ -385,11 +384,10 @@ class cfg(object):
         del self._disc[:]
 
     def getDisc(self):
-        """Return discrete trace file
-        
-        :returns: name of discrete trace file
+        """Return the discrete trace file path.
+
+        :returns: path of the discrete trace file, or an empty string if none is set.
         :rtype: str
-        
         """
         if self._disc:
             return self._disc[0]
@@ -456,11 +454,10 @@ class cfg(object):
             raise IOError('RAMSES: The observables file %s does not exist or is not valid.' % (ofile))
 
     def getObs(self):
-        """Get observables file name
-        
-        :returns: name of observables file
+        """Return the observables file path.
+
+        :returns: path of the observables file, or an empty string if none is set.
         :rtype: str
-        
         """
         if self._obs:
             return self._obs[0]

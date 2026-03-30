@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""PyRAMSES module."""
+"""Package build script for pyramses.
+
+Reads version metadata from the installed :mod:`pyramses` package and uses
+:func:`setuptools.setup` to define the distribution.  Run via
+``python setup.py install`` (legacy) or, preferably, with ``pip install .``.
+"""
 
 try:
     from setuptools import setup, find_packages
@@ -18,11 +23,11 @@ from pyramses import __version__, __author__, __email__, __status__, __url__, __
 setup(
     name=__name__,
     version=__version__,
-    description='Python library for RAMSES dynamic simulator.',
+    description='Python library for RAMSES dynamic simulator of STEPSS package.',
     author=__author__,
     author_email=__email__,
     url=__url__,
-    keywords=['RAMSES', 'Power Systems', 'Simulator'],
+    keywords=['RAMSES', 'Power Systems', 'Simulator','STEPSS'],
     license='Apache-2.0',
     long_description=read_file('README.rst'),
     long_description_content_type='text/x-rst',
@@ -40,7 +45,7 @@ setup(
     ],
     entry_points={
         'console_scripts' : [
-            'dynsim = pyramses.scripts.exec:run',
+            'ramses = pyramses.scripts.exec:run',
         ]
     }
 

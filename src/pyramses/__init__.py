@@ -24,7 +24,7 @@ __license__ = "Apache-2.0"
 __maintainer__ = "Petros Aristidou"
 __email__ = "apetros@pm.me"
 __url__ = "https://stepss.sps-lab.org"
-__status__ = "3 - Alpha"
+__status__ = "5 - Production/Stable"
 
 import sys
 from warnings import warn

@@ -1,4 +1,4 @@
-|PyPI version| |PyPI status| |PyPI python| |Docs status| |Docs commit|
+|PyPI version| |PyPI status| |Docs status|
 
 .. |PyPI version| image:: https://img.shields.io/pypi/v/pyramses
    :target: https://pypi.org/project/pyramses/
@@ -8,24 +8,16 @@
    :target: https://pypi.org/project/pyramses/
    :alt: PyPI status
 
-.. |PyPI python| image:: https://img.shields.io/pypi/pyversions/pyramses
-   :target: https://pypi.org/project/pyramses/
-   :alt: Python versions
-
 .. |Docs status| image:: https://img.shields.io/github/actions/workflow/status/SPS-L/stepss-docs/deploy.yml?branch=main&label=docs
    :target: https://github.com/SPS-L/stepss-docs/
    :alt: Docs deploy status
-
-.. |Docs commit| image:: https://img.shields.io/github/last-commit/SPS-L/stepss-docs
-   :target: https://github.com/SPS-L/stepss-docs/
-   :alt: Docs last commit
 
 PyRAMSES: Python Interface to RAMSES
 =====================================
 
 PyRAMSES is a Python interface to the `RAMSES <https://stepss.sps-lab.org/getting-started/overview/>`_ dynamic simulator — part of the `STEPSS <https://stepss.sps-lab.org/>`_ power system simulation suite. It covers the full simulation workflow: defining test cases, launching simulations, querying system state at runtime, and extracting and plotting results.
 
-STEPSS has been developed by `Dr. Petros Aristidou <https://sps-lab.org/>`_ (Cyprus University of Technology) and Dr. Thierry Van Cutsem (University of Liège).
+STEPSS has been developed by `Dr. Petros Aristidou <https://sps-lab.org/>`_ (Cyprus University of Technology) and Dr. Thierry Van Cutsem (Emeritus, University of Liège).
 
 Overview
 --------

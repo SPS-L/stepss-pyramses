@@ -161,7 +161,7 @@ Authors
 Support
 -------
 
-- Documentation: `https://stepss.sps-lab.org/pyramses/ <https://stepss.sps-lab.org/pyramses/>`_
+- Documentation: `https://stepss.sps-lab.org/pyramses/ <https://stepss.sps-lab.org/pyramses/overview/>`_
 - Issues: `https://github.com/SPS-L/stepss-PyRAMSES/issues <https://github.com/SPS-L/stepss-PyRAMSES/issues>`_
 - Project page: `https://sps-lab.org/project/pyramses/ <https://sps-lab.org/project/pyramses/>`_
 

@@ -58,6 +58,21 @@ Minimal installation (no plotting or notebook support)::
 
 **Optional:** Install `Gnuplot <http://www.gnuplot.info/>`_ to enable real-time observable plots during simulation. PyRAMSES will still work without it, but runtime plots will be disabled.
 
+Linux System Prerequisites
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+On Linux, ``ramses.so`` links against the following system libraries which must be installed separately before running PyRAMSES::
+
+   sudo apt install libopenblas0 libgfortran5 libgomp1
+
+These packages provide:
+
+- **libopenblas0** — OpenBLAS BLAS/LAPACK routines used by the solver
+- **libgfortran5** — GNU Fortran runtime required by the Fortran components of RAMSES
+- **libgomp1** — OpenMP runtime for multi-core parallel execution
+
+On most desktop Linux distributions these are already present. If ``pyramses`` fails to import with a shared-library error, install the packages above and retry.
+
 Platform Support
 ~~~~~~~~~~~~~~~~
 
